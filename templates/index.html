@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Emotion Classifier</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .loader {
+      border: 4px solid transparent;
+      border-top: 4px solid #3b82f6;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body class="bg-white text-gray-800 min-h-screen flex items-center justify-center px-4">
+  <div class="w-full max-w-xl p-6 rounded-2xl shadow-md bg-gray-50">
+    <h1 class="text-2xl font-semibold text-center mb-6">Emotion Classifier</h1>
+
+    <!-- Upload Section -->
+    <div class="mb-6">
+      <label for="file-upload" class="flex flex-col items-center justify-center w-full h-40 bg-white border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-100 transition">
+        <svg class="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+        </svg>
+        <span class="text-sm text-gray-500">Click to upload image (JPG/PNG)</span>
+        <input id="file-upload" type="file" class="hidden" accept=".jpg, .jpeg, .png" />
+      </label>
+    </div>
+
+    <!-- Preview -->
+    <div id="previewSection" class="mb-4 hidden">
+      <img id="preview-image" src="#" alt="Preview" class="w-full h-56 object-contain rounded-xl border border-gray-200 bg-white p-2" />
+    </div>
+
+    <!-- Analyze Button -->
+    <button id="predict-btn" disabled class="w-full py-2 text-white font-medium rounded-xl bg-blue-500 hover:bg-blue-600 transition disabled:opacity-50">
+      Analyze Image
+    </button>
+
+    <!-- Results -->
+    <div class="mt-6">
+      <div id="placeholder" class="text-center text-gray-400 text-sm">
+        Upload an image to detect emotions.
+      </div>
+      <div id="results" class="hidden text-center">
+        <div class="text-xl font-semibold text-blue-600" id="emotion-result"></div>
+        <div class="text-sm text-gray-600 mt-1" id="confidence"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div id="loading" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="text-center">
+      <div class="loader mx-auto mb-3"></div>
+      <p class="text-white text-sm">Processing...</p>
+    </div>
+  </div>
+
+  <script>
+    const fileUpload = document.getElementById('file-upload');
+    const predictBtn = document.getElementById('predict-btn');
+    const previewSection = document.getElementById('previewSection');
+    const previewImage = document.getElementById('preview-image');
+    const loading = document.getElementById('loading');
+    const placeholder = document.getElementById('placeholder');
+    const results = document.getElementById('results');
+    const emotionResult = document.getElementById('emotion-result');
+    const confidence = document.getElementById('confidence');
+
+    fileUpload.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          previewImage.src = e.target.result;
+          previewSection.classList.remove('hidden');
+          predictBtn.disabled = false;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    predictBtn.addEventListener('click', async () => {
+      const file = fileUpload.files[0];
+      if (!file) return;
+
+      try {
+        loading.classList.remove('hidden');
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch('/predict', { method: 'POST', body: formData });
+        const result = await response.json();
+
+        if (result.error) {
+          alert(`Error: ${result.error}`);
+          return;
+        }
+
+        displayResults(result);
+        // if (result.display_image) {
+        //   previewImage.src = `/static/uploads/${result.display_image}`;
+        // }
+
+      } catch (error) {
+        console.error('Error:', error);
+        alert('An error occurred while processing the image');
+      } finally {
+        loading.classList.add('hidden');
+      }
+    });
+
+    function displayResults(result) {
+      placeholder.classList.add('hidden');
+      results.classList.remove('hidden');
+      emotionResult.textContent = result.emotion;
+      confidence.textContent = `Confidence: ${result.confidence}`;
+    }
+  </script>
+</body>
+</html>
